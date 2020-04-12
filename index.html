@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Конвертировать буфер обмена pro100 в Cutting 3</title>
+  <style>
+    h1 {
+      font-size: 1rem;
+      margin: 1rem 0;
+    }
+    div {
+      margin: 1rem 0;
+    }
+
+    textarea {
+      width: 100%;
+      margin-top: .5rem;
+      height: calc(50vh - 50px - 4rem);
+    }
+  </style>
+</head>
+<body>
+  <h1>Конвертировать буфер обмена из Pro100 в буфер обмена для Cutting 3</h1>
+  <div>
+      <button onclick="clearAll()">Очистить все</button>
+    <label>
+      Вставьте сюда текст из буфера обмена Pro100:
+      <textarea name="" id="text-pro100" oninput="keepTextAreasStates()">
+          Бок-Левый (ящик с шух)	710	   	557	   	16	1	[ДСП]\147
+          Дно (ящик с шухляд)	557	   	800	   	16	1	[ДСП]\147
+          Бок-Правый (ящик с шух)	710	   	557	   	16	1	[ДСП]\147
+          Корпусная планка (Верх)	80	   	768	   	16	2	[ДСП]\147
+          Шухляда Бок Лев	127	   	550	   	16	2	[ДСП]\147
+          шухляда перед	127	   	698	   	16	2	[ДСП]\147
+          Шухляда Бок Прав	127	   	550	   	16	2	[ДСП]\147
+          шухляда зад	127	   	698	   	16	2	[ДСП]\147
+          шухляда дно вкладное ДСП 16мм	517	   	697	   	16	3	[ДСП]\147
+          Шухляда Бок Лев	243	   	550	   	16	1	[ДСП]\147
+          шухляда перед	243	   	698	   	16	1	[ДСП]\147
+          Шухляда Бок Прав	243	   	550	   	16	1	[ДСП]\147
+          шухляда зад	243	   	698	   	16	1	[ДСП]\147
+      </textarea>
+    </label>
+    <label>
+      <input id="encodeRusLetters" type="checkbox" checked="checked" onchange="keepTextAreasStates()"/>
+      Закодировать русские символы (необходимо для корректного отображение русских символов в Cutting 3)
+    </label>
+    <br/>
+    <button onclick="convert()">Конвертировать</button>
+  </div>
+  <div>
+    <label>
+      Здесь будет текст для Cutting 3:
+      <textarea name="" id="text-cutting3"></textarea>
+    </label>
+    <br>
+    <button onclick="copy()">Скопировать в буфер обмена</button>
+  </div>
+
+  <script>
+    // vanilla js
+    const prostoId = 'text-pro100';
+    const cutting3Id = 'text-cutting3';
+    const encodeRusLettersId = 'encodeRusLetters';
+    const prostoInpt = document.getElementById(prostoId);
+    const cutting3Inpt = document.getElementById(cutting3Id);
+    const encodeRusLettersInpt = document.getElementById(encodeRusLettersId);
+
+
+
+    const dict = { // unfortunately I didn't found encoding for native TextEncoder 
+      "а":"à","б":"á","в":"â","г":"ã","д":"ä","е":"å","ё":"¸","ж":"æ","з":"ç","и":"è","й":"é","к":"ê","л":"ë","м":"ì","н":"í","о":"î","п":"ï","р":"ð","с":"ñ","т":"ò","у":"ó","ф":"ô","х":"õ","ц":"ö","ч":"÷","ш":"ø","щ":"ù","ъ":"ú","ы":"û","ь":"ü","э":"ý","ю":"þ","я":"ÿ",
+      "А":"À","Б":"Á","В":"Â","Г":"Ã","Д":"Ä","Е":"Å","Ё":"¨","Ж":"Æ","З":"Ç","И":"È","Й":"É","К":"Ê","Л":"Ë","М":"Ì","Н":"Í","О":"Î","П":"Ï","Р":"Ð","С":"Ñ","Т":"Ò","У":"Ó","Ф":"Ô","Х":"Õ","Ц":"Ö","Ч":"×","Ш":"Ø","Щ":"Ù","Ъ":"Ú","Ы":"Û","Ь":"Ü","Э":"Ý","Ю":"Þ","Я":"ß"
+    };
+
+    function copy() {
+      /* Select the text field */
+      cutting3Inpt.select();
+
+      /* Copy the text inside the text field */
+      document.execCommand("copy");
+    }
+
+    function clearAll() {
+      prostoInpt.value = '';
+      cutting3Inpt.value = '';
+      keepTextAreasStates();
+    }
+
+    function keepTextAreasStates() {
+      localStorage.setItem(prostoId, prostoInpt.value);
+      localStorage.setItem(cutting3Id, cutting3Inpt.value);
+      localStorage.setItem(encodeRusLettersId, encodeRusLettersInpt.checked);
+    }
+  
+    function convert() {
+      const pro100Code = prostoInpt.value;
+
+      const pro100LinesTextList = pro100Code.split("\n")
+        .map(line => line.trim())
+        .filter(notEmpty => !!notEmpty);
+      
+      const pro100DataList = pro100LinesTextList.map(line => {
+        const [ desc, width, height, weight, count, material] = 
+          line.split("\t")
+          .map(line => line.trim())
+          .filter(notEmpty => !!notEmpty);
+
+        return {
+          desc, width, height, weight, count, material
+        };
+      });
+      
+      const cutting3TextLines = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
+        const encodedDesc = encodeRusLettersInpt.checked ? strtr(desc, dict) : desc;
+        return `0\t${width}\t${height}\t${count}\t1\t\t\t\t\t\tFalse\t\t${encodedDesc}\tD\t\t\t\t`;
+      });
+
+      const cutting3Text = cutting3TextLines.join("\r\n");
+      cutting3Inpt.value = cutting3Text;
+      keepTextAreasStates();
+    }
+
+
+    function strtr(s, p, r) {
+      return !!s && {
+          2: function () {
+              for (var i in p) {
+                  s = strtr(s, i, p[i]);
+              }
+              return s;
+          },
+          3: function () {
+              return s.replace(RegExp(p, 'g'), r);
+          },
+          0: function () {
+              return;
+          }
+      }[arguments.length]();
+    }
+  
+  function init() {
+    const prostoText = localStorage.getItem(prostoId);
+    if (prostoText !== null) {
+      prostoInpt.value = prostoText;
+      cutting3Inpt.value = localStorage.getItem(cutting3Id) || '';
+      encodeRusLettersInpt.checked = localStorage.getItem(encodeRusLettersId) !== 'false';
+    } else {
+      convert();
+    }
+  }
+
+  init();
+
+  </script>
+
+</body>
+</html>
