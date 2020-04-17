@@ -32655,7 +32655,7 @@ ff02::3		ip6-allhosts
 127.0.0.1 gma.alicdn.com
 
 # [aliexpress.com]
-127.0.0.1 s.click.aliexpress.com
+#127.0.0.1 s.click.aliexpress.com
 
 # [alivar.com.vn]
 127.0.0.1 alivar.com.vn
