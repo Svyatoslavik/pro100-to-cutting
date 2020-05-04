@@ -18,7 +18,12 @@
     textarea {
       width: 100%;
       margin-top: .5rem;
-      height: calc(50vh - 50px - 4rem);
+      height: calc(50vh - 50px - 6rem);
+    }
+    .my {
+      display: inline-block;
+      margin-top: 5px;
+      margin-bottom: 5px;
     }
   </style>
 </head>
@@ -44,9 +49,18 @@
           шухляда зад	243	   	698	   	16	1	[ДСП]\147
       </textarea>
     </label>
-    <label>
+    <label class="my">
       <input id="encodeRusLetters" type="checkbox" checked="checked" onchange="keepTextAreasStates()"/>
       Закодировать русские символы (необходимо для корректного отображение русских символов в Cutting 3)
+    </label>
+    <br/>
+    <label class="my">
+      Вращение
+      <select id="rotationSelect" onchange="keepTextAreasStates()">
+        <option value="0">Не вращать</option>
+        <option value="1" selected="selected">Вращать</option>
+        <option value="2">Совместное вращение</option>
+      </select>
     </label>
     <br/>
     <button onclick="convert()">Конвертировать</button>
@@ -65,10 +79,12 @@
     const prostoId = 'text-pro100';
     const cutting3Id = 'text-cutting3';
     const encodeRusLettersId = 'encodeRusLetters';
+    const rotateSelectId = 'rotationSelect';
+
     const prostoInpt = document.getElementById(prostoId);
     const cutting3Inpt = document.getElementById(cutting3Id);
     const encodeRusLettersInpt = document.getElementById(encodeRusLettersId);
-
+    const rotationSelectInp =  document.getElementById(rotateSelectId);
 
 
     const dict = { // unfortunately I didn't found encoding for native TextEncoder 
@@ -94,6 +110,20 @@
       localStorage.setItem(prostoId, prostoInpt.value);
       localStorage.setItem(cutting3Id, cutting3Inpt.value);
       localStorage.setItem(encodeRusLettersId, encodeRusLettersInpt.checked);
+      localStorage.setItem(rotateSelectId, rotationSelectInp.value);
+    }
+
+    function readTextAreasStates() {
+      const prostoText = localStorage.getItem(prostoId);
+      if (prostoText !== null) {
+        prostoInpt.value = prostoText;
+        cutting3Inpt.value = localStorage.getItem(cutting3Id) || '';
+        encodeRusLettersInpt.checked = localStorage.getItem(encodeRusLettersId) !== 'false';
+        rotationSelectInp.value = localStorage.getItem(rotateSelectId) || "1";
+        return true;
+      } else {
+        return false;
+      }
     }
   
     function convert() {
@@ -116,7 +146,8 @@
       
       const cutting3TextLines = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
         const encodedDesc = encodeRusLettersInpt.checked ? strtr(desc, dict) : desc;
-        return `0\t${width}\t${height}\t${count}\t1\t\t\t\t\t\tFalse\t\t${encodedDesc}\tD\t\t\t\t`;
+        const rotation = rotationSelectInp.value || '1';
+        return `0\t${width}\t${height}\t${count}\t${rotation}\t\t\t\t\t\tFalse\t\t${encodedDesc}\tD\t\t\t\t`;
       });
 
       const cutting3Text = cutting3TextLines.join("\r\n");
@@ -144,11 +175,7 @@
   
   function init() {
     const prostoText = localStorage.getItem(prostoId);
-    if (prostoText !== null) {
-      prostoInpt.value = prostoText;
-      cutting3Inpt.value = localStorage.getItem(cutting3Id) || '';
-      encodeRusLettersInpt.checked = localStorage.getItem(encodeRusLettersId) !== 'false';
-    } else {
+    if (!readTextAreasStates()) {
       convert();
     }
   }
