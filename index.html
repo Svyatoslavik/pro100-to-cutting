@@ -52,6 +52,10 @@
     <label class="my">
       <input id="encodeRusLetters" type="checkbox" checked="checked" onchange="keepTextAreasStates()"/>
       Закодировать русские символы (необходимо для корректного отображение русских символов в Cutting 3)
+    </label><br/>
+    <label class="my">
+      <input id="groupSimilarDetails" type="checkbox" onchange="keepTextAreasStates()"/>
+      Групировать похожие детали
     </label>
     <br/>
     <label class="my">
@@ -80,11 +84,13 @@
     const cutting3Id = 'text-cutting3';
     const encodeRusLettersId = 'encodeRusLetters';
     const rotateSelectId = 'rotationSelect';
+    const groupSimilarId = 'groupSimilarDetails';
 
     const prostoInpt = document.getElementById(prostoId);
     const cutting3Inpt = document.getElementById(cutting3Id);
     const encodeRusLettersInpt = document.getElementById(encodeRusLettersId);
     const rotationSelectInp =  document.getElementById(rotateSelectId);
+    const groupSimilarInp =  document.getElementById(groupSimilarId);
 
 
     const dict = { // unfortunately I didn't found encoding for native TextEncoder 
@@ -107,9 +113,11 @@
     }
 
     function keepTextAreasStates() {
+      upStates();
       localStorage.setItem(prostoId, prostoInpt.value);
       localStorage.setItem(cutting3Id, cutting3Inpt.value);
       localStorage.setItem(encodeRusLettersId, encodeRusLettersInpt.checked);
+      localStorage.setItem(groupSimilarId, groupSimilarInp.checked);
       localStorage.setItem(rotateSelectId, rotationSelectInp.value);
     }
 
@@ -119,21 +127,28 @@
         prostoInpt.value = prostoText;
         cutting3Inpt.value = localStorage.getItem(cutting3Id) || '';
         encodeRusLettersInpt.checked = localStorage.getItem(encodeRusLettersId) !== 'false';
+        groupSimilarInp.checked = localStorage.getItem(groupSimilarId) === 'true';
         rotationSelectInp.value = localStorage.getItem(rotateSelectId) || "1";
+        upStates();
         return true;
       } else {
         return false;
       }
     }
+
+    function upStates() {
+      // groupSimilarInp.disabled= rotationSelectInp.value !== '1' ? 'disabled' : null; 
+    }
   
     function convert() {
       const pro100Code = prostoInpt.value;
+      const groupSimilar = groupSimilarInp.checked;
 
       const pro100LinesTextList = pro100Code.split("\n")
         .map(line => line.trim())
         .filter(notEmpty => !!notEmpty);
       
-      const pro100DataList = pro100LinesTextList.map(line => {
+      const pro100DataListRaw = pro100LinesTextList.map(line => {
         const [ desc, width, height, weight, count, material] = 
           line.split("\t")
           .map(line => line.trim())
@@ -144,6 +159,9 @@
         };
       });
       
+
+      const pro100DataList = groupSimilar ? groupSimilarDetails(pro100DataListRaw, rotationSelectInp.value === '1') : pro100DataListRaw;
+
       const cutting3TextLines = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
         const encodedDesc = encodeRusLettersInpt.checked ? strtr(desc, dict) : desc;
         const rotation = rotationSelectInp.value || '1';
@@ -155,6 +173,29 @@
       keepTextAreasStates();
     }
 
+    function groupSimilarDetails(pro100DataList, canRotate) {
+      const groupsMap = pro100DataList.reduce((res, item) => {
+        const keyA = `${item.width}x${item.height}`;
+        const keyB = `${item.height}x${item.width}`;
+        if (res[keyA]) {
+          res[keyA].push(item);
+        } else if(canRotate && res[keyB]) {
+          res[keyB].push(item);
+        } else {
+          res[keyA] = [item];
+        }
+        return res;
+      }, {});
+
+      return Object.values(groupsMap).map((groupedItems) => {
+        const first = groupedItems[0];
+        return {
+          ...first,
+          count: groupedItems.reduce((sum, { count }) => sum + parseInt(count), 0),
+          desc: groupedItems.map(({ desc }) => desc).filter(notEmpty => notEmpty).join(', '),
+        };
+      });
+    }
 
     function strtr(s, p, r) {
       return !!s && {
