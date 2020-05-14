@@ -18,7 +18,7 @@
     textarea {
       width: 100%;
       margin-top: .5rem;
-      height: calc(50vh - 50px - 6rem);
+      height: calc(50vh - 170px);
     }
     .my {
       display: inline-block;
@@ -77,6 +77,9 @@
     <br>
     <button onclick="copy()">Скопировать в буфер обмена</button>
   </div>
+  <div>
+    Суммарная длинна всех сторон деталей (может быть как длина кромки) <input readonly id="kromkaInpt">
+  </div>
 
   <script>
     // vanilla js
@@ -85,12 +88,14 @@
     const encodeRusLettersId = 'encodeRusLetters';
     const rotateSelectId = 'rotationSelect';
     const groupSimilarId = 'groupSimilarDetails';
+    const kromkaLengthId = 'kromkaInpt';
 
     const prostoInpt = document.getElementById(prostoId);
     const cutting3Inpt = document.getElementById(cutting3Id);
     const encodeRusLettersInpt = document.getElementById(encodeRusLettersId);
     const rotationSelectInp =  document.getElementById(rotateSelectId);
     const groupSimilarInp =  document.getElementById(groupSimilarId);
+    const kromkaLengthInp =  document.getElementById(kromkaLengthId);
 
 
     const dict = { // unfortunately I didn't found encoding for native TextEncoder 
@@ -119,6 +124,7 @@
       localStorage.setItem(encodeRusLettersId, encodeRusLettersInpt.checked);
       localStorage.setItem(groupSimilarId, groupSimilarInp.checked);
       localStorage.setItem(rotateSelectId, rotationSelectInp.value);
+      localStorage.setItem(kromkaLengthId, kromkaLengthInp.value);
     }
 
     function readTextAreasStates() {
@@ -129,6 +135,7 @@
         encodeRusLettersInpt.checked = localStorage.getItem(encodeRusLettersId) !== 'false';
         groupSimilarInp.checked = localStorage.getItem(groupSimilarId) === 'true';
         rotationSelectInp.value = localStorage.getItem(rotateSelectId) || "1";
+        kromkaLengthInp.value = localStorage.getItem(kromkaLengthId) || ''; 
         upStates();
         return true;
       } else {
@@ -155,21 +162,28 @@
           .filter(notEmpty => !!notEmpty);
 
         return {
-          desc, width, height, weight, count, material
+          desc, weight, count, material,
+          width: parseInt(width), 
+          height: parseInt(height),
         };
       });
       
 
       const pro100DataList = groupSimilar ? groupSimilarDetails(pro100DataListRaw, rotationSelectInp.value === '1') : pro100DataListRaw;
-
+  
       const cutting3TextLines = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
         const encodedDesc = encodeRusLettersInpt.checked ? strtr(desc, dict) : desc;
         const rotation = rotationSelectInp.value || '1';
         return `0\t${width}\t${height}\t${count}\t${rotation}\t\t\t\t\t\tFalse\t\t${encodedDesc}\tD\t\t\t\t`;
       });
 
+      const kromkaLength = pro100DataList
+        .map(({ width, height, count }) => (width + height) * 2 * count)
+        .reduce((sum, curr) => sum + curr, 0);
+
       const cutting3Text = cutting3TextLines.join("\r\n");
       cutting3Inpt.value = cutting3Text;
+      kromkaLengthInp.value = kromkaLength;
       keepTextAreasStates();
     }
 
