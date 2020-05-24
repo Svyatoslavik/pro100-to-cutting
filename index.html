@@ -25,6 +25,35 @@
       margin-top: 5px;
       margin-bottom: 5px;
     }
+
+    .modal {
+      display: none;
+      width: 90%;
+      position: absolute;
+      background-color: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+      padding: 1rem;
+      top: 50%;
+      left: 5%;
+      transform: translateY(-50%);
+    }
+    .report-text {
+      white-space: pre;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .report-modal-close {
+      position: absolute;
+      right: 5px;
+      top: 5px;
+      border: 1px solid;
+      border-radius: 50%;
+      padding: 0;
+      width: 20px;
+      text-transform: uppercase;
+      height: 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -68,6 +97,7 @@
     </label>
     <br/>
     <button onclick="convert()">Конвертировать</button>
+    <button onclick="showShortReport()">Краткий отчет</button>
   </div>
   <div>
     <label>
@@ -81,6 +111,10 @@
     Суммарная длинна всех сторон деталей (может быть как длина кромки) <input readonly id="kromkaInpt">
   </div>
 
+  <div id="reportModal" class="modal">
+    <button onclick="closeReportModal()" class="report-modal-close">x</button>
+    <div id="reportText" class="report-text"></div>
+  </div>
   <script>
     // vanilla js
     const prostoId = 'text-pro100';
@@ -96,6 +130,9 @@
     const rotationSelectInp =  document.getElementById(rotateSelectId);
     const groupSimilarInp =  document.getElementById(groupSimilarId);
     const kromkaLengthInp =  document.getElementById(kromkaLengthId);
+
+    const reportModal = document.getElementById('reportModal');
+    const reportTextEl = document.getElementById('reportText');
 
 
     const dict = { // unfortunately I didn't found encoding for native TextEncoder 
@@ -150,7 +187,53 @@
     function convert() {
       const pro100Code = prostoInpt.value;
       const groupSimilar = groupSimilarInp.checked;
+      const canRotate = rotationSelectInp.value === '1';
 
+      
+      const pro100DataList = prepareDataList(pro100Code, groupSimilar, canRotate);
+  
+      const cutting3TextLines = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
+        const encodedDesc = encodeRusLettersInpt.checked ? strtr(desc, dict) : desc;
+        const rotation = rotationSelectInp.value || '1';
+        return `0\t${width}\t${height}\t${count}\t${rotation}\t\t\t\t\t\tFalse\t\t${encodedDesc}\tD\t\t\t\t`;
+      });
+
+      const kromkaLength = getBorderLenth(pro100DataList);
+
+      const cutting3Text = cutting3TextLines.join("\r\n");
+      cutting3Inpt.value = cutting3Text;
+      kromkaLengthInp.value = kromkaLength;
+      keepTextAreasStates();
+    }
+
+    function showShortReport() {
+      const pro100Code = prostoInpt.value;
+      const groupSimilar = groupSimilarInp.checked;
+      const canRotate = rotationSelectInp.value === '1';
+
+      
+      const pro100DataList = prepareDataList(pro100Code, groupSimilar, canRotate);
+
+      const reportText = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
+        const mod = count % 10;
+        return `${width}x${height} - ${count} штук${(mod === 1) ? 'a' : (mod < 5) ? 'и': '' }`;
+      }).join('\r\n');
+      reportTextEl.textContent = reportText + `\n\nСуммарная длинна всех сторон деталей (может быть как длина кромки): ${getBorderLenth(pro100DataList)}` ;
+      reportModal.style.display = 'block';
+    }
+
+    function closeReportModal() {
+      console.log('dd')
+      reportModal.style.display = 'none';
+    }
+
+    function getBorderLenth(pro100DataList) {
+      return pro100DataList
+        .map(({ width, height, count }) => (width + height) * 2 * count)
+        .reduce((sum, curr) => sum + curr, 0);
+    }
+
+    function prepareDataList(pro100Code, groupSimilar, canRotate) {
       const pro100LinesTextList = pro100Code.split("\n")
         .map(line => line.trim())
         .filter(notEmpty => !!notEmpty);
@@ -168,23 +251,7 @@
         };
       });
       
-
-      const pro100DataList = groupSimilar ? groupSimilarDetails(pro100DataListRaw, rotationSelectInp.value === '1') : pro100DataListRaw;
-  
-      const cutting3TextLines = pro100DataList.map(({ desc, width, height, weight, count, material }) => {
-        const encodedDesc = encodeRusLettersInpt.checked ? strtr(desc, dict) : desc;
-        const rotation = rotationSelectInp.value || '1';
-        return `0\t${width}\t${height}\t${count}\t${rotation}\t\t\t\t\t\tFalse\t\t${encodedDesc}\tD\t\t\t\t`;
-      });
-
-      const kromkaLength = pro100DataList
-        .map(({ width, height, count }) => (width + height) * 2 * count)
-        .reduce((sum, curr) => sum + curr, 0);
-
-      const cutting3Text = cutting3TextLines.join("\r\n");
-      cutting3Inpt.value = cutting3Text;
-      kromkaLengthInp.value = kromkaLength;
-      keepTextAreasStates();
+      return groupSimilar ? groupSimilarDetails(pro100DataListRaw, canRotate) : pro100DataListRaw;
     }
 
     function groupSimilarDetails(pro100DataList, canRotate) {
