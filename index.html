@@ -239,10 +239,12 @@
         .filter(notEmpty => !!notEmpty);
       
       const pro100DataListRaw = pro100LinesTextList.map(line => {
-        const [ desc, width, height, weight, count, material] = 
-          line.split("\t")
+        const elements = line.split("\t")
           .map(line => line.trim())
           .filter(notEmpty => !!notEmpty);
+
+        const [ desc, width, height, weight, count, material] = 
+          (elements.length < 6) ? [' ', ...elements] : elements;
 
         return {
           desc, weight, count, material,
