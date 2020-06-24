@@ -6,6 +6,11 @@
 127.0.0.1 ankunding.biz
 127.0.0.1 vz.ankunding.biz
 
+0.0.0.0 holder.com.ua
+0.0.0.0 i.holder.com.ua
+0.0.0.0 h.holder.com.ua
+
+
 # This hosts file is brought to you by Dan Pollock and can be found at
 # http://someonewhocares.org/hosts/
 # You are free to copy and distribute this file for non-commercial uses,
